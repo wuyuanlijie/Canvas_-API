@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>知识点canvas+es6+class+继承</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+    html,body {
+      height: 100%;
+    }
+    #canvas {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      background-color: #EFEFEF;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas">
+    抱歉，您的浏览器不支持canvas!
+  </canvas>
+  <script type="text/javascript">
+    //JS es6中新的class类 constructor 构造方法
+    class Circle {
+      constructor(x, y) { //构造方法
+        this.x = x;
+        this.y = y;
+        this.r = Math.random()*10; //Math.ceil()向上取整 Math.floor()向下取整
+        this._mx = Math.random(); //产生一个偏移量 每个对象的mx都不同
+        this._my = Math.random();
+      }
+      drawCircle(ctx) {   //构造方法
+        ctx.beginPath();  //画图的路径！这个必须声明
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI*2, false); //x坐标 y坐标 半径 弧度
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(164,100,74,.3)';  //填充样式
+        ctx.fill();  //填充当前的图像（路径）
+      }
+      move(w, h) {  //让圈圈动起来 传入画布的长度和宽度 来判断碰撞问题
+       //这里要判断是否超出了边界 超出将值设为负值 也就是一个碰撞检测
+       //x,y 是他所在的坐标
+        this._mx = (this.x < (w-this.r) && this.x > this.r ) ? this._mx : (-this._mx);
+        this._my = (this.y < (h-this.r) && this.y > this.r ) ? this._my : (-this._my);
+        this.x += this._mx/2; //这样就可以移动了
+        this.y += this._my/2;
+      }
+      drawLine(ctx, _circle) {  //将相近的圆圈连起来 参数是context与圆圈对象
+        //现在问题就是 两点的距离判断 如果大于150就不显示
+        let dx = this.x - _circle.x;
+        let dy = this.y - _circle.y;
+        let d = Math.sqrt( dx * dx  + dy * dy );  //sqrt求平方根
+        if ( d < 200 ) {
+          ctx.beginPath();
+          ctx.moveTo(this.x, this.y);  //两个中心点连线
+          ctx.lineTo(_circle.x, _circle.y);
+          ctx.closePath();
+          ctx.strokeStyle = 'rgba(204,204,204,.3)'; //设置线的颜色 线条颜色strokeStyle
+          ctx.stroke(); //线条着色
+        }
+      }
+    }
+    class CurrentCircle extends Circle {  //继承原来的Circle类
+      constructor(x, y) {
+        super(x, y);
+      }
+      drawCircle(ctx) {  //覆盖掉原来的方法
+        ctx.beginPath();
+        this.r = 6;
+        ctx.arc(this.x, this.y, this.r, 0, 360, false);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255, 52, 203, .9)';
+        ctx.fill();
+      }
+    }
+    let canvas = document.querySelector('#canvas'),
+        context = canvas.getContext('2d'),
+        circles = [],  //这个用来放置圆的对象 因为里面有很多的Circle的实例
+        //解释：offsetWidth返回的宽度值包括border+width+padding而且是个整数值 （相对于容器）
+        //clientWidth返回的宽度是width+padding 不包括盒子的边框 （相对于文档的）
+        w = canvas.width = canvas.offsetWidth,  //圆圈可以选择的x轴的位置
+        h = canvas.height = canvas.offsetHeight,
+        current_circle = new CurrentCircle(0, 0);//当前悬浮的圆圈对象
+
+    //原生的帧刷新 使用不同浏览器
+    window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
+    function draw() {
+      context.clearRect(0, 0, w, h); //擦去之前画的图
+      for ( var i = 0; i < circles.length; i++ ) {
+        circles[i].drawCircle(context); //开始画图
+        circles[i].move(w,h);
+        for ( var j = i + 1; j < circles.length; j++ ) { //+1说明去除它自身的值
+            circles[i].drawLine(context, circles[j]);
+        }
+      }
+      if (current_circle.x) {
+        current_circle.drawCircle(context);
+        for ( var k = 0; k < circles.length; k++ ){  //画线
+          current_circle.drawLine(context, circles[k]);
+        }
+      }
+
+       //这个相当于setInterval(draw, 24);  draw本身就是一个函数
+      requestAnimationFrame(draw);
+    }
+
+    function init(num) {
+       for ( var i = 0; i < num; i++ ) {
+          //画圆圈Circle一共有num个 并且将Circle实例对象放入circles
+          circles.push( new Circle( Math.random()*w, Math.random()*h) );
+       }
+       draw(); //当所有的Circle实例化对象都push到circles里面的时候 就可以开始画图了
+    }
+
+    window.addEventListener("load", init(60));
+    //鼠标悬浮的效果
+    window.addEventListener('mousemove', function(e) {
+      e = e || window.event;
+      console.log(current_circle.x);
+      //e.clientX 返回的是鼠标指向对于浏览器的水平坐标 clientX
+      current_circle.x = e.clientX;
+      current_circle.y = e.clientY;
+    })
+    window.addEventListener('mouseout', function(e) {
+      e = e || window.event;
+      current_circle.x = 0;
+      current_circle.y = 0;
+    })
+
+
+  </script>
+
+</body>
+</html>
